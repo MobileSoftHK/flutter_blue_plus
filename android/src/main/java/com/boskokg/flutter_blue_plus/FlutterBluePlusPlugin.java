@@ -328,18 +328,11 @@ public class FlutterBluePlusPlugin implements
                             return;
                         }
 
-                        ScanSettings settings;
+                        ScanSettings.Builder builder = new ScanSettings.Builder().setScanMode(scanMode);
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            // Api Level 26
-                            settings = new ScanSettings.Builder()
-                                .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
-                                .setLegacy(false)
-                                .setScanMode(scanMode)
-                                .build();
-                        } else {
-                            settings = new ScanSettings.Builder()
-                                .setScanMode(scanMode).build();
+                            builder.setLegacy(false);
                         }
+                        ScanSettings settings = builder.build();
 
                         List<ScanFilter> filters = new ArrayList<>();
                         
@@ -1644,7 +1637,7 @@ public class FlutterBluePlusPlugin implements
             if(msd != null) {
                 for (int i = 0; i < msd.size(); i++) {
                     int key = msd.keyAt(i);
-                    byte[] value = msd.valueAt(i);
+                    byte[] value = parseScanRecord(key, scanRecord.getBytes());
                     msdMap.put(key, bytesToHex(value));
                 }
             }
@@ -1813,6 +1806,27 @@ public class FlutterBluePlusPlugin implements
         }
 
         return result;
+    }
+
+    static byte[] parseScanRecord(int manufacturerId, byte[] bytes) {
+        int dataLength = 0;
+        List<byte[]> manufacturerDataList = new ArrayList<>();
+        for (int j = 2; j < bytes.length - 1; j++) {
+            byte[] arr = {bytes[j + 1], bytes[j]};
+            if (ByteBuffer.wrap(arr).getShort() == manufacturerId) {
+                int length = bytes[j - 2] - 3;
+                dataLength += length;
+                byte[] data = Arrays.copyOfRange(bytes, j + 2, j + 2 + length);
+                manufacturerDataList.add(data);
+            }
+        }
+        byte[] byteArray = new byte[dataLength];
+
+        ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+        for (byte[] manufacturerData : manufacturerDataList) {
+            buffer.put(manufacturerData);
+        }
+        return buffer.array();
     }
 
     //////////////////////////////////////////
