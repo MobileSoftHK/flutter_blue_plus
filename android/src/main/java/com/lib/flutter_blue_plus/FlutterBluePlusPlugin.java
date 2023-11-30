@@ -2282,7 +2282,7 @@ public class FlutterBluePlusPlugin implements
         if(manufData != null) {
             for (int i = 0; i < manufData.size(); i++) {
                 int key = manufData.keyAt(i);
-                byte[] value = manufData.valueAt(i);
+                byte[] value = parseScanRecord(key, adv.getBytes());
                 manufDataB.put(key, bytesToHex(value));
             }
         }
@@ -2471,6 +2471,27 @@ public class FlutterBluePlusPlugin implements
         }
 
         return result;
+    }
+
+    static byte[] parseScanRecord(int manufacturerId, byte[] bytes) {
+        int dataLength = 0;
+        List<byte[]> manufacturerDataList = new ArrayList<>();
+        for (int j = 2; j < bytes.length - 1; j++) {
+            byte[] arr = {bytes[j + 1], bytes[j]};
+            if (ByteBuffer.wrap(arr).getShort() == manufacturerId) {
+                int length = bytes[j - 2] - 3;
+                dataLength += length;
+                byte[] data = Arrays.copyOfRange(bytes, j + 2, j + 2 + length);
+                manufacturerDataList.add(data);
+            }
+        }
+        byte[] byteArray = new byte[dataLength];
+
+        ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+        for (byte[] manufacturerData : manufacturerDataList) {
+            buffer.put(manufacturerData);
+        }
+        return buffer.array();
     }
 
     //////////////////////////////////////////
